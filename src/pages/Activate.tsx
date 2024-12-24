@@ -12,7 +12,7 @@ const Activate: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <h2>Your account is not active. Please activate your account to continue.</h2>
+        <h2>Your account is not active.</h2>
         <IonButton onClick={() => {
                           signOut(auth);
                           window.location.reload();
