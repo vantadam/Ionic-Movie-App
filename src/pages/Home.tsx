@@ -12,6 +12,7 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  deleteDoc,
 } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useState, useEffect } from "react";
@@ -73,6 +74,17 @@ const Home = () => {
       console.error("Error fetching movies:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Delete movie
+  const deleteMovie = async (movieId: string) => {
+    try {
+      const movieDocRef = doc(db, "movies", movieId);
+      await deleteDoc(movieDocRef);  // Delete the movie from Firestore
+      setMovies((prevMovies) => prevMovies.filter((movie) => movie.id !== movieId));  // Remove from the local state
+    } catch (error) {
+      console.error("Error deleting movie:", error);
     }
   };
 
@@ -154,20 +166,39 @@ const Home = () => {
     }
   };
 
+  // Fetch user role
+const fetchUserRole = async (userId: string) => {
+  try {
+    const userDocRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return userData.role || null; // Return the role or null if not found
+    }
+  } catch (error) {
+    console.error("Error fetching user role:", error);
+  }
+  return null;
+};
+
+
   // Handle authentication state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setCurrentUser(user);
+        const role = await fetchUserRole(user.uid); // Fetch the user's role
+        setCurrentUser({ ...user, role }); // Update currentUser with role
         fetchLikedMovies(user.uid); // Fetch liked movies on login
       } else {
         setCurrentUser(null);
         setLikedMovies([]); // Clear likes when logged out
       }
     });
-
+  
     return () => unsubscribe();
   }, []);
+  
 
   const handleScroll = (e: any) => {
     const bottom =
@@ -235,12 +266,21 @@ const Home = () => {
               <h3>{movie.title}</h3>
               <p>Genres: {movie.genres.join(", ")}</p>
               <p>Year: {movie.year}</p>
-              <IonButton
-                color={likedMovies.includes(movie.id) ? "danger" : "primary"}
-                onClick={() => toggleLikeMovie(movie.id)}
-              >
-                {likedMovies.includes(movie.id) ? "Unlike" : "Like"}
-              </IonButton>
+              {currentUser?.role === "admin" ? (
+                <IonButton
+                  color="danger"
+                  onClick={() => deleteMovie(movie.id)} // Delete functionality
+                >
+                  Delete
+                </IonButton>
+              ) : (
+                <IonButton
+                  color={likedMovies.includes(movie.id) ? "danger" : "primary"}
+                  onClick={() => toggleLikeMovie(movie.id)}
+                >
+                  {likedMovies.includes(movie.id) ? "Unlike" : "Like"}
+                </IonButton>
+              )}
             </div>
           </IonItem>
         ))}

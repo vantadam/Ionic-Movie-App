@@ -10,11 +10,12 @@ import {
   IonSpinner,
 } from '@ionic/react';
 import { auth, db } from '../firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
 const Profile: React.FC = () => {
   const [name, setName] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoriteMovies, setFavoriteMovies] = useState<any[]>([]); // Store movie names here
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +60,27 @@ const Profile: React.FC = () => {
     };
   }, []);
 
+  // Fetch movie names from the movies collection based on the favorites array
+  useEffect(() => {
+    const fetchFavoriteMovies = async () => {
+      if (favorites.length > 0) {
+        try {
+          const moviesQuery = query(
+            collection(db, 'movies'),
+            where('movieId', 'in', favorites) // Query movies by the movieId in favorites array
+          );
+          const querySnapshot = await getDocs(moviesQuery);
+          const movieNames = querySnapshot.docs.map(doc => doc.data().title);
+          setFavoriteMovies(movieNames); // Set movie names to the state
+        } catch (error) {
+          console.error("Error fetching movie names:", error);
+        }
+      }
+    };
+
+    fetchFavoriteMovies();
+  }, [favorites]);
+
   return (
     <IonPage>
       <IonContent className="ion-padding">
@@ -80,10 +102,10 @@ const Profile: React.FC = () => {
               <IonText>
                 <h2>Favorites</h2>
               </IonText>
-              {favorites.length === 0 ? (
+              {favoriteMovies.length === 0 ? (
                 <IonText>No favorites yet.</IonText>
               ) : (
-                favorites.map((movie, index) => (
+                favoriteMovies.map((movie, index) => (
                   <IonItem key={index}>{movie}</IonItem>
                 ))
               )}
