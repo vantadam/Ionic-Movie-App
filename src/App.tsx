@@ -21,9 +21,8 @@ import Profile from './pages/Profile';
 import UploadCSVFromLocal from './pages/Upload';
 import Users from './pages/Users';
 import Match from './pages/Match';
-import Activate from './pages/Activate'; // Add this page for activation
+import Activate from './pages/Activate';
 
-/* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
@@ -44,14 +43,12 @@ const App: React.FC = () => {
   const [isActive, setIsActive] = useState(true);
   const db = getFirestore();
 
-  // Function to fetch both user role and isActive status
   const fetchUserData = async (userId: string) => {
     try {
       const userDocRef = doc(db, 'users', userId);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
-        const userData = userDoc.data();
-        return userData; // Return all user data (role and isActive)
+        return userDoc.data();
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -63,17 +60,11 @@ const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userData = await fetchUserData(user.uid); // Fetch user role and isActive
+          const userData = await fetchUserData(user.uid);
           if (userData) {
-            setCurrentUser({ ...user, ...userData }); // Set user data
-            setIsAuthenticated(true); // Set authentication to true
-
-            // Check if the account is active
-            if (userData.isActive === false) {
-              setIsActive(false); // Set isActive to false if the user is inactive
-            } else {
-              setIsActive(true); // Ensure the user is active
-            }
+            setCurrentUser({ ...user, ...userData });
+            setIsAuthenticated(true);
+            setIsActive(userData.isActive !== false);
           }
         } catch (error) {
           console.error('Error setting user data:', error);
@@ -81,16 +72,16 @@ const App: React.FC = () => {
         }
       } else {
         setCurrentUser(null);
-        setIsAuthenticated(false); // No user logged in
+        setIsAuthenticated(false);
       }
-      setLoading(false); // Stop loading once auth state is checked
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [db]);
 
   if (loading) {
-    return <div>Loading...</div>; // Placeholder while checking auth state
+    return <div>Loading...</div>;
   }
 
   return (
@@ -99,33 +90,34 @@ const App: React.FC = () => {
         <IonTabs>
           <IonRouterOutlet>
             {isAuthenticated ? (
-              // Check if the user is active, show activation page if not
               isActive ? (
                 <>
                   <Route path="/home" component={Home} exact />
                   <Route path="/profile" component={Profile} exact />
                   <Route path="/match" component={Match} exact />
                   {currentUser?.role === 'admin' ? (
-                    <Route path="/upload" component={UploadCSVFromLocal} exact />
+                    <>
+                      <Route path="/upload" component={UploadCSVFromLocal} exact />
+                      <Route path="/users" component={Users} exact />
+                    </>
                   ) : (
-                    <Route path="/upload" render={() => <Redirect to="/home" />} />
-                  )}
-                  {currentUser?.role === 'admin' ? (
-                    <Route path="/users" component={Users} exact />
-                  ) : (
-                    <Route path="/users" render={() => <Redirect to="/home" />} />
+                    <>
+                      <Route path="/upload" render={() => <Redirect to="/home" />} />
+                      <Route path="/users" render={() => <Redirect to="/home" />} />
+                    </>
                   )}
                   <Route exact path="/" render={() => <Redirect to="/home" />} />
+                  <Route path="*" render={() => <Redirect to="/home" />} />
                 </>
               ) : (
-                // If the user is not active, show the Activate page
-                <Route path="/activate" component={Activate} exact />
+                <>
+                  <Route path="/activate" component={Activate} exact />
+                  <Route path="*" render={() => <Redirect to="/activate" />} />
+                </>
               )
             ) : (
               <>
-                {/* Anyone can access the login page */}
                 <Route path="/login" component={Login} exact />
-                {/* If user is not authenticated, redirect to login */}
                 <Route path="*" render={() => <Redirect to="/login" />} />
               </>
             )}
